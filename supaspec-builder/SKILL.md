@@ -1,24 +1,25 @@
 ---
 name: supaspec-builder
 description: >
-  Spec-driven development using Supaspec as the single source of truth. Use this skill
-  whenever building, modifying, or maintaining code in a project that has a Supaspec
-  specification (also referred to as "spec" or "supaspec"). Connects to Supaspec via MCP
-  to read specs, track implementation status, and self-document all changes as bugs or
-  features so future agents can reproduce the full implementation.
+  Spec-driven development and documentation using Supaspec as the single source of truth. Use this
+  skill whenever building, modifying, or maintaining code in a project that has a Supaspec
+  specification (also referred to as "spec" or "supaspec"). Connects to Supaspec via MCP to read
+  specs, track implementation status, and self-document all changes. Supports two modes: building
+  from spec (Part 1-2) and changelog mode (Part 3) where the user asks to log changes and the
+  agent documents everything with reasoning, organized by day and agent.
 license: Apache-2.0
 compatibility: Requires Supaspec MCP server connected via mcp_servers configuration
 metadata:
   author: blackbird-lab
-  version: "2.0"
-  tags: "workflow, spec-driven, planning, supaspec, self-documenting"
+  version: "3.0"
+  tags: "workflow, spec-driven, planning, supaspec, self-documenting, changelog, compaction"
 ---
 
 # Supaspec Builder
 
 You build software against specifications stored in Supaspec. The spec is the single source of truth. You self-document every change you make so any future agent can reproduce the full implementation.
 
-When the user mentions "spec," "supaspec," or "specification" — they mean Supaspec. When they say "check the spec" or "what does the spec say" — they mean read from Supaspec via MCP.
+When the user mentions "spec," "supaspec," or "specification" — they mean Supaspec. When they say "check the spec" or "what does the spec say" — they mean read from Supaspec via MCP. When they say "log changes," "document this," or "use changelog mode" — they mean Part 3 (Changelog Mode).
 
 ---
 
@@ -132,9 +133,9 @@ params: { project: "project-name", section: "bugreports" }
 **If it doesn't exist, create it:**
 ```
 tool: section.create
-params: { 
-  project: "project-name", 
-  title: "Bug Reports", 
+params: {
+  project: "project-name",
+  title: "Bug Reports",
   content: "# Bug Reports\n\nAutomatically logged bugs found and fixed during implementation.\n",
   agent_name: "your-agent-name",
   message: "Initialize bug reports log"
@@ -170,14 +171,14 @@ Example entry:
 ```markdown
 ## [2026-02-25] Webhook handler crashes on null Stripe event
 
-**Issue:** The payment webhook handler threw an unhandled TypeError when Stripe sent 
-a test event with a null `data.object` field. This caused all subsequent webhook 
+**Issue:** The payment webhook handler threw an unhandled TypeError when Stripe sent
+a test event with a null `data.object` field. This caused all subsequent webhook
 deliveries to fail.
 
-**Cause:** No null check on `event.data.object` before accessing `.id` property. 
+**Cause:** No null check on `event.data.object` before accessing `.id` property.
 Stripe sends null objects for certain test event types.
 
-**Fix:** Added null guard in `handleWebhook()`. If `data.object` is null, log the 
+**Fix:** Added null guard in `handleWebhook()`. If `data.object` is null, log the
 event type and return 200 without processing.
 ```
 
@@ -222,10 +223,10 @@ Each feature entry should follow this format:
 
 **What:** What this feature does from the user's perspective.
 
-**Why:** Why it was added — reference the spec section if it came from the spec, 
+**Why:** Why it was added — reference the spec section if it came from the spec,
 or note that the user requested it during implementation.
 
-**How:** How it was implemented. Key architectural decisions, libraries used, 
+**How:** How it was implemented. Key architectural decisions, libraries used,
 patterns followed.
 
 **Spec section:** Which spec section this implements (if applicable).
@@ -236,15 +237,15 @@ Example entry:
 ```markdown
 ## Stripe Connect merchant onboarding
 
-**What:** Merchants can now connect their Stripe account to receive payments 
-directly. The onboarding flow uses Stripe's hosted onboarding page and redirects 
+**What:** Merchants can now connect their Stripe account to receive payments
+directly. The onboarding flow uses Stripe's hosted onboarding page and redirects
 back to the merchant dashboard on completion.
 
 **Why:** Implements the "Merchant Onboarding" requirement from the Payments spec section.
 
-**How:** Created a Connect onboarding endpoint that generates an AccountLink and 
-redirects the merchant. A webhook listener handles `account.updated` events to 
-track onboarding status. Merchant model extended with `stripeAccountId` and 
+**How:** Created a Connect onboarding endpoint that generates an AccountLink and
+redirects the merchant. A webhook listener handles `account.updated` events to
+track onboarding status. Merchant model extended with `stripeAccountId` and
 `stripeOnboardingStatus` fields.
 
 **Spec section:** payments → Stripe Connect Onboarding
@@ -264,7 +265,230 @@ If you fix 3 bugs and implement 2 features in one session, log each one separate
 
 ---
 
+## Part 3: Changelog Mode
+
+This mode is for **existing projects** where the user wants to document ongoing work without building from a spec. The user activates it by saying things like "log changes to supaspec," "document what we do," or "use changelog mode."
+
+In changelog mode, you log every change you make into a daily per-agent section in Supaspec. At the end of a session, you suggest compacting the entries into a cohesive summary.
+
+### Daily Per-Agent Sections
+
+Changelogs are organized by **day** and by **agent**. Each agent that works on the project gets its own section for the day:
+
+```
+changelog-16-Mar-2026-claude-code
+changelog-16-Mar-2026-cursor
+changelog-17-Mar-2026-claude-code
+```
+
+This means:
+- Multiple agents working the same day don't collide
+- Each agent's work is a self-contained record
+- You can see at a glance who did what and when
+
+### Section Statuses
+
+| Status | Meaning |
+|--------|---------|
+| `wip` | Active changelog — entries are being added today |
+| `implemented` | Day is finished — entries have been compacted into a summary |
+
+### Starting Changelog Mode
+
+When the user asks to log changes, set up today's section.
+
+**Check if your section for today already exists:**
+```
+tool: section.get
+params: { project: "project-name", section: "changelog-16-Mar-2026-claude-code" }
+```
+
+**If it doesn't exist, create it with `wip` status:**
+```
+tool: section.create
+params: {
+  project: "project-name",
+  title: "Changelog 16-Mar-2026 claude-code",
+  content: "# Changelog — 16-Mar-2026 (claude-code)\n\nChanges made today.\n\n---\n",
+  agent_name: "claude-code",
+  status: "wip",
+  message: "Initialize changelog for 16-Mar-2026"
+}
+```
+
+If it already exists and has status `wip`, continue adding entries. If it has status `implemented`, it was already compacted — create entries directly (they'll be added after the summary).
+
+### Logging Changes
+
+After making a change (or a coherent group of related changes), append an entry to your section for today.
+
+**Read current content first:**
+```
+tool: section.get
+params: { project: "project-name", section: "changelog-16-Mar-2026-claude-code" }
+```
+
+**Append your entry:**
+```
+tool: section.update
+params: {
+  project: "project-name",
+  section: "changelog-16-Mar-2026-claude-code",
+  agent_name: "claude-code",
+  message: "Log: brief description",
+  prompt: "what the user asked you to do",
+  content: "<existing content plus new entry>"
+}
+```
+
+### Entry Format
+
+Each changelog entry follows this structure:
+
+```markdown
+## Brief title
+
+**Type:** feature | bugfix | refactor | config | dependency
+
+**What changed:** One or two sentences describing the change from the user's perspective.
+
+**Why:** The reasoning behind this change — what the user asked for, what problem it solves,
+or what requirement it fulfills.
+
+**How:** Key implementation details — what files were modified, what approach was taken,
+what patterns were followed. Focus on decisions that a future developer would need to understand.
+
+**Files:** List of key files created or modified (not every file, just the important ones).
+```
+
+The date and agent are in the section title, so individual entries don't need them.
+
+### Example Entry
+
+In a section titled `Changelog 16-Mar-2026 claude-code`:
+
+```markdown
+## Add Stripe webhook signature verification
+
+**Type:** bugfix
+
+**What changed:** Incoming Stripe webhooks are now verified against the webhook signing secret
+before processing. Previously, any POST to /api/webhooks/stripe would be accepted.
+
+**Why:** User reported that webhook endpoint was accepting unverified requests, which is a
+security vulnerability. Stripe recommends always verifying webhook signatures in production.
+
+**How:** Added signature verification using `stripe.webhooks.constructEvent()` in the webhook
+handler middleware. Invalid signatures return 400. The signing secret is read from
+`STRIPE_WEBHOOK_SECRET` env var.
+
+**Files:** src/api/webhooks/stripe.ts, .env.example
+```
+
+### Multiple Changes in One Session
+
+Log each change separately as its own entry. Each entry should be independently understandable. Keep them in chronological order.
+
+If you make several small, tightly related changes (e.g., "add field to model, update API, update UI"), you can log them as a single entry that covers the whole unit of work.
+
+### Suggesting Compaction
+
+**You do NOT compact automatically.** Instead, suggest it to the user when conditions are right.
+
+Suggest compaction when **any** of these are true:
+
+1. **Today's changelog has 5+ entries** — enough material to benefit from synthesis
+2. **The session is winding down** — the user seems done with their current work ("that's all for now", "let's wrap up", etc.)
+3. **The user explicitly asks** — "compact the changelog", "summarize today's work", "clean up the log"
+
+**How to suggest:**
+> "Today's changelog has N entries. Want me to compact them into a summary and mark the day as done?"
+
+Only proceed if the user agrees.
+
+### How to Compact
+
+Compaction operates on **your section for today only**. You never need to read other days or other agents' sections.
+
+**Step 1: Read today's entries**
+```
+tool: section.get
+params: { project: "project-name", section: "changelog-16-Mar-2026-claude-code" }
+```
+
+**Step 2: Synthesize into a summary**
+
+Read all entries and write a single cohesive summary that covers the day's work. Group related changes together and tell the story of what was accomplished.
+
+**Summary format:**
+
+```markdown
+# Changelog — 16-Mar-2026 (claude-code)
+
+## Summary
+
+Brief overview of the day's work in 2-3 sentences.
+
+## Changes
+
+### [Theme/area 1]
+What was done and why. Combine related entries into a coherent paragraph.
+Key files affected.
+
+### [Theme/area 2]
+What was done and why. Combine related entries into a coherent paragraph.
+Key files affected.
+
+## Decisions & Reasoning
+
+Key decisions made during the day and why — this is the most valuable part
+for future agents.
+
+## Known Issues
+
+Any open bugs, limitations, or TODOs that came up during the day.
+```
+
+**Step 3: Update the section with the summary**
+```
+tool: section.update
+params: {
+  project: "project-name",
+  section: "changelog-16-Mar-2026-claude-code",
+  agent_name: "claude-code",
+  message: "Compact changelog for 16-Mar-2026 (N entries → summary)",
+  content: "<the synthesized summary>"
+}
+```
+
+**Step 4: Set status to `implemented`**
+```
+tool: section.set_status
+params: {
+  project: "project-name",
+  section: "changelog-16-Mar-2026-claude-code",
+  status: "implemented",
+  agent_name: "claude-code"
+}
+```
+
+This marks the day as done. Future agents scanning the project can see at a glance which days are active (`wip`) and which are finished (`implemented`).
+
+### Compaction Quality
+
+When synthesizing entries:
+
+- **Synthesize, don't concatenate.** Merge related entries into a coherent narrative. Don't just paste entries together.
+- **Resolve contradictions.** If entry #3 says "added feature X" and entry #7 says "removed feature X", the summary should reflect the final state only. Mention the reversal in Decisions if relevant.
+- **Preserve reasoning.** The "why" behind decisions is the most valuable part. Always carry forward the reasoning from entries into the summary.
+- **Be factual.** Describe what IS, not what should be. This is documentation of real, implemented code.
+- **Reference files.** Include key file paths so future agents can find the implementation.
+
+---
+
 ## Summary: The Complete Workflow
+
+### Building from spec (Part 1-2):
 
 ```
 1. User says "build X"
@@ -277,14 +501,17 @@ If you fix 3 bugs and implement 2 features in one session, log each one separate
 6. You set status to "implemented"
 ```
 
-On subsequent iterations (user gives feedback, finds bugs, requests changes):
+### Changelog mode (Part 3):
 
 ```
-1. User gives feedback
-2. You make the change
-3. You classify: bug or feature
-4. You log it in the appropriate section
-5. Repeat
+1. User says "log changes" / "use changelog mode"
+2. You check the Supaspec project exists
+3. You create today's section (changelog-{DD-Mon-YYYY}-{agent-name}, status: wip)
+4. You make the code change
+5. You log the change in your section with full reasoning
+6. Repeat for each change
+7. Suggest compaction when 5+ entries or session winding down
+8. If user agrees: synthesize into summary, set status to "implemented"
 ```
 
-The bugreports and features sections become the project's living changelog. Any agent that reads these sections knows exactly what was built, what broke, and how everything was fixed — without having to read through chat histories.
+Both modes ensure that every change is documented with its reasoning. The bugreports, features, and changelog sections become the project's living history. Any agent that reads them knows exactly what was built, what broke, and how everything was fixed — without having to read through chat histories.

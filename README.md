@@ -1,32 +1,32 @@
 # Supaspec Builder Skill
 
-   An [Agent Skill](https://agentskills.io) for spec-driven development with [Supaspec](https://supaspec.dev).
+An [Agent Skill](https://agentskills.io) for spec-driven development and documentation with [Supaspec](https://supaspec.dev).
 
-   Teaches AI coding agents to build from Supaspec specs and self-document every change as bugs or features — so any future agent can reproduce the full implementation.
+Teaches AI coding agents to build from Supaspec specs, self-document every change, and log ongoing work as daily changelogs — so any future agent can reproduce the full implementation.
 
-   ## Install
+## Install
+
 ```bash
-   npx skills add super-full-stack/supaspec-builder
+npx skills add super-full-stack/supaspec-builder
 ```
 
-   Works with Claude Code, Cursor, Codex, GitHub Copilot, and any agent that supports the Agent Skills standard.
+Works with Claude Code, Cursor, Codex, GitHub Copilot, and any agent that supports the Agent Skills standard.
 
-   ## Requires
+## Requires
 
-   [Supaspec MCP server](https://supaspec.dev) connected to your agent.
+[Supaspec MCP server](https://supaspec.dev) connected to your agent.
 
-   ## What it does
+## What it does
 
-   - Reads specs from Supaspec before coding
-   - Tracks implementation status (approved → implementing → implemented)
-   - Self-documents bug fixes in a `bugreports` section
-   - Self-documents features in daily `features-{date}` sections
-   - Creates a living changelog any agent can read
-```
+**Building from spec (Part 1-2):**
+- Reads specs from Supaspec before coding
+- Tracks implementation status (approved → implementing → implemented)
+- Self-documents bug fixes in a `bugreports` section
+- Self-documents features in daily `features-{date}` sections
 
-4. **Submit to skills.sh** — go to https://skills.sh and follow their submission flow (it indexes from GitHub, so once the repo is public with a valid SKILL.md it should get picked up, or you can submit manually).
-
-5. **Add to Supaspec docs** — wherever you document MCP setup, add:
-```
-   ## Recommended: Install the builder skill
-   npx skills add super-full-stack/supaspec-builder
+**Changelog mode (Part 3):**
+- Activated when user says "log changes" or "use changelog mode"
+- Logs every code change to daily per-agent `changelog-{date}-{agent}` sections
+- Captures what changed, why, how, and which files were affected
+- Uses statuses: `wip` for active logs, `implemented` for compacted summaries
+- Suggests compacting the day's entries into a cohesive summary at end of session
