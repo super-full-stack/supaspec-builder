@@ -23,6 +23,22 @@ When the user mentions "spec," "supaspec," or "specification" — they mean Supa
 
 ---
 
+## Response Format (Important)
+
+`section.get` and `project.get` return **multiple text blocks**, not a single JSON object:
+
+- `section.get` returns **two blocks per section**: a compact JSON metadata header (id, title, slug, status, parentId, isFolder, versionsCount, openProposalsCount, etc.) followed by the **raw markdown content** (no JSON escaping).
+- `project.get` returns **2N blocks**: metadata + content, repeated for each section in order.
+
+When you need to "append to existing content" (e.g., adding a bug entry or changelog entry), the existing content is the **second text block** of the `section.get` response — use it as-is, append your new entry, and pass the combined string to `section.update`. Do not try to parse the markdown out of a JSON field — there isn't one.
+
+Other fields you may have used previously are no longer inline:
+- **Versions / history** → use the `history` action. `section.get` only returns `versionsCount`.
+- **Open proposals** → use the `proposal list` action. `section.get` only returns `openProposalsCount`.
+- **Folders** → `section.list` now includes folders alongside sections; check `isFolder` and `parentId`. To create a section inside a folder, pass `parent: "<folder-title-or-slug>"` to `section.create`.
+
+---
+
 ## Part 1: Building From Spec
 
 ### Discovering What To Build
